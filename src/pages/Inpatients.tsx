@@ -1,40 +1,16 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Filter, Building2, BedDouble, Users, Clock, AlertTriangle, Plus, Calendar, FileText, Clipboard, Activity, Heart, Pill, Stethoscope, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react';
-import AdmissionRequestModal from '../components/Inpatients/AdmissionRequestModal';
-import DeleteInpatientModal from '../components/Inpatients/DeleteInpatientModal';
-import WardRoundModal from '../components/Inpatients/WardRoundModal';
-import InpatientDetailsModal from '../components/Inpatients/InpatientDetailsModal';
+import { Search, Plus, Filter, Calendar, Clock, User, Building2, BedDouble, FileText, ArrowRight, ArrowRightLeft, DoorOpen, Stethoscope, Heart, X, CheckCircle, AlertCircle } from 'lucide-react';
 import AddInpatientModal from '../components/Inpatients/AddInpatientModal';
-import InpatientCareModal from '../components/Inpatients/InpatientCareModal';
+import DeleteInpatientModal from '../components/Inpatients/DeleteInpatientModal';
+import InpatientDetailsModal from '../components/Inpatients/InpatientDetailsModal';
 import DischargeModal from '../components/Inpatients/DischargeModal';
+import InpatientCareModal from '../components/Inpatients/InpatientCareModal';
+import WardRoundModal from '../components/Inpatients/WardRoundModal';
+import AdmissionRequestModal from '../components/Inpatients/AdmissionRequestModal';
 
-type AdmissionRequest = {
-  id: string;
-  patientName: string;
-  patientId: string;
-  age: number;
-  gender: string;
-  department: string;
-  doctor: string;
-  diagnosis: string;
-  reason: string;
-  requestDate: string;
-  urgency: 'normal' | 'urgent';
-  status: 'pending' | 'approved' | 'rejected';
-  requestTime: string;
-  expectedStayDuration: number;
-  insuranceType: string;
-  contactPerson: {
-    name: string;
-    relationship: string;
-    phone: string;
-  };
-};
-
-type AdmissionStatus = 'pending' | 'approved' | 'rejected';
 type InpatientStatus = 'admitted' | 'critical' | 'stable' | 'improving' | 'discharged' | 'transferred';
-type InpatientView = 'list' | 'requests' | 'rounds' | 'care';
+type AdmissionStatus = 'pending' | 'approved' | 'rejected';
 
 interface Inpatient {
   id: string;
@@ -111,95 +87,62 @@ interface Inpatient {
   followUpPlan?: string;
 }
 
+interface AdmissionRequest {
+  id: string;
+  patientName: string;
+  patientId: string;
+  age: number;
+  gender: string;
+  department: string;
+  doctor: string;
+  diagnosis: string;
+  reason: string;
+  requestDate: string;
+  urgency: 'normal' | 'urgent';
+  status: AdmissionStatus;
+  rejectionReason?: string;
+}
+
 const Inpatients: React.FC = () => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<AdmissionStatus | InpatientStatus | ''>('');
+  const [selectedStatus, setSelectedStatus] = useState<InpatientStatus | 'all'>('all');
   const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedWard, setSelectedWard] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState<AdmissionRequest | null>(null);
-  const [selectedInpatient, setSelectedInpatient] = useState<Inpatient | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showWardRoundModal, setShowWardRoundModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showCareModal, setShowCareModal] = useState(false);
   const [showDischargeModal, setShowDischargeModal] = useState(false);
-  const [currentView, setCurrentView] = useState<InpatientView>('list');
-  const [expandedPatient, setExpandedPatient] = useState<string | null>(null);
+  const [showCareModal, setShowCareModal] = useState(false);
+  const [showRoundModal, setShowRoundModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAdmissionRequestModal, setShowAdmissionRequestModal] = useState(false);
+  const [selectedInpatient, setSelectedInpatient] = useState<Inpatient | null>(null);
+  const [selectedAdmissionRequest, setSelectedAdmissionRequest] = useState<AdmissionRequest | null>(null);
+  const [activeTab, setActiveTab] = useState<'inpatients' | 'admissionRequests'>('inpatients');
 
-  // 示例数据 - 住院申请列表
-  const admissionRequests: AdmissionRequest[] = [
-    {
-      id: "REQ-001",
-      patientName: "张三",
-      patientId: "P-12348",
-      age: 45,
-      gender: "男",
-      department: "心内科",
-      doctor: "李医生",
-      diagnosis: "冠心病",
-      reason: "需要进一步治疗和观察",
-      requestDate: "2024-01-24",
-      requestTime: "09:30",
-      urgency: "normal",
-      status: "pending",
-      expectedStayDuration: 7,
-      insuranceType: "城镇职工医保",
-      contactPerson: {
-        name: "张小明",
-        relationship: "子女",
-        phone: "13812345678"
-      }
-    },
-    {
-      id: "REQ-002",
-      patientName: "李四",
-      patientId: "P-12349",
-      age: 32,
-      gender: "女",
-      department: "神经内科",
-      doctor: "王医生",
-      diagnosis: "脑梗塞",
-      reason: "需要立即住院治疗",
-      requestDate: "2024-01-24",
-      requestTime: "10:15",
-      urgency: "urgent",
-      status: "pending",
-      expectedStayDuration: 14,
-      insuranceType: "城镇居民医保",
-      contactPerson: {
-        name: "李大明",
-        relationship: "父亲",
-        phone: "13987654321"
-      }
-    }
-  ];
-
-  // 示例数据 - 住院病人
+  // 示例数据 - 实际应该从API获取
   const inpatients: Inpatient[] = [
     {
-      id: "INP-001",
-      patientId: "P-12350",
-      patientName: "王五",
-      age: 65,
+      id: "IP-001",
+      patientId: "P-12345",
+      patientName: "张三",
+      age: 45,
       gender: "男",
-      admissionDate: "2024-01-20",
+      admissionDate: "2025-05-20",
       admissionTime: "14:30",
-      ward: "心内科病区",
+      ward: "内科病区A",
       room: "301",
       bedNumber: "301-A",
-      diagnosis: ["冠心病", "高血压", "2型糖尿病"],
-      doctor: "张医生",
-      department: "心内科",
-      status: "stable",
-      expectedDischargeDate: "2024-01-27",
-      lengthOfStay: 4,
+      diagnosis: ["原发性高血压", "2型糖尿病"],
+      doctor: "李医生",
+      department: "内科",
+      status: "admitted",
+      expectedDischargeDate: "2025-05-27",
+      lengthOfStay: 2,
       vitalSigns: {
-        temperature: 36.5,
-        bloodPressure: "130/80",
-        heartRate: 72,
-        respiratoryRate: 18,
+        temperature: 36.8,
+        bloodPressure: "130/85",
+        heartRate: 75,
+        respiratoryRate: 16,
         oxygenSaturation: 98
       },
       nursingLevel: "standard",
@@ -207,357 +150,217 @@ const Inpatients: React.FC = () => {
       activityLevel: "适度活动",
       medications: [
         {
-          name: "阿司匹林",
-          dosage: "100mg",
+          name: "氨氯地平片",
+          dosage: "5mg",
           frequency: "每日一次",
           route: "口服",
-          startDate: "2024-01-20",
-          status: "active"
-        },
-        {
-          name: "硝酸甘油",
-          dosage: "0.5mg",
-          frequency: "需要时",
-          route: "舌下含服",
-          startDate: "2024-01-20",
+          startDate: "2025-05-20",
           status: "active"
         }
       ],
       allergies: ["青霉素"],
-      lastRound: {
-        date: "2024-01-24",
-        time: "09:00",
-        doctor: "张医生",
-        notes: "患者状态稳定，无胸痛症状，继续当前治疗方案"
-      },
       careTeam: [
         {
           id: "D-001",
-          name: "张医生",
+          name: "李医生",
           role: "主治医师",
-          department: "心内科"
+          department: "内科"
         },
         {
           id: "N-001",
-          name: "李护士",
+          name: "王护士",
           role: "责任护士",
-          department: "心内科"
+          department: "内科"
         }
       ],
       orders: [
         {
-          id: "ORD-001",
+          id: "O-001",
           type: "medication",
-          name: "阿司匹林 100mg 口服 每日一次",
+          name: "氨氯地平片 5mg 口服 每日一次",
           status: "active",
-          orderedDate: "2024-01-20",
-          orderedBy: "张医生",
-          details: "餐后服用"
+          orderedDate: "2025-05-20",
+          orderedBy: "李医生",
+          details: "早餐后服用"
         },
         {
-          id: "ORD-002",
+          id: "O-002",
           type: "lab",
-          name: "血常规",
+          name: "血常规检查",
           status: "completed",
-          orderedDate: "2024-01-21",
-          orderedBy: "张医生",
-          details: "监测白细胞计数"
+          orderedDate: "2025-05-20",
+          orderedBy: "李医生",
+          details: "明天上午空腹"
         }
       ],
       progressNotes: [
         {
-          id: "NOTE-001",
-          date: "2024-01-21",
-          time: "10:30",
-          author: "张医生",
-          content: "患者无胸痛不适，生命体征平稳，继续观察",
+          id: "PN-001",
+          date: "2025-05-20",
+          time: "16:00",
+          author: "李医生",
+          content: "患者入院时血压130/85mmHg，无明显不适。继续口服降压药物。",
           type: "doctor"
-        },
-        {
-          id: "NOTE-002",
-          date: "2024-01-22",
-          time: "08:30",
-          author: "李护士",
-          content: "患者睡眠良好，饮食正常，无特殊不适",
-          type: "nurse"
         }
       ],
       treatmentResponse: "good",
       complications: []
     },
     {
-      id: "INP-002",
-      patientId: "P-12351",
-      patientName: "赵六",
-      age: 78,
+      id: "IP-002",
+      patientId: "P-12346",
+      patientName: "李四",
+      age: 32,
       gender: "女",
-      admissionDate: "2024-01-18",
-      admissionTime: "09:45",
-      ward: "神经内科病区",
+      admissionDate: "2025-05-19",
+      admissionTime: "10:15",
+      ward: "外科病区B",
       room: "205",
       bedNumber: "205-B",
-      diagnosis: ["脑梗塞", "高血压", "心房颤动"],
-      doctor: "王医生",
-      department: "神经内科",
+      diagnosis: ["急性阑尾炎", "术后恢复"],
+      doctor: "张医生",
+      department: "外科",
       status: "improving",
-      expectedDischargeDate: "2024-02-01",
-      lengthOfStay: 6,
+      expectedDischargeDate: "2025-05-25",
+      lengthOfStay: 3,
       vitalSigns: {
-        temperature: 36.8,
-        bloodPressure: "145/85",
-        heartRate: 85,
-        respiratoryRate: 20,
-        oxygenSaturation: 96
+        temperature: 37.2,
+        bloodPressure: "120/80",
+        heartRate: 80,
+        respiratoryRate: 18,
+        oxygenSaturation: 97
       },
       nursingLevel: "intermediate",
-      dietType: "软食",
-      activityLevel: "卧床休息，定时翻身",
-      medications: [
-        {
-          name: "阿托伐他汀",
-          dosage: "20mg",
-          frequency: "每晚一次",
-          route: "口服",
-          startDate: "2024-01-18",
-          status: "active"
-        },
-        {
-          name: "依诺肝素",
-          dosage: "40mg",
-          frequency: "每日一次",
-          route: "皮下注射",
-          startDate: "2024-01-18",
-          status: "active"
-        }
-      ],
-      allergies: [],
-      lastRound: {
-        date: "2024-01-24",
-        time: "08:30",
-        doctor: "王医生",
-        notes: "患者肢体活动较前改善，言语功能恢复中，继续康复训练"
-      },
-      careTeam: [
-        {
-          id: "D-002",
-          name: "王医生",
-          role: "主治医师",
-          department: "神经内科"
-        },
-        {
-          id: "N-002",
-          name: "张护士",
-          role: "责任护士",
-          department: "神经内科"
-        },
-        {
-          id: "T-001",
-          name: "刘治疗师",
-          role: "康复治疗师",
-          department: "康复科"
-        }
-      ],
-      orders: [
-        {
-          id: "ORD-003",
-          type: "medication",
-          name: "阿托伐他汀 20mg 口服 每晚一次",
-          status: "active",
-          orderedDate: "2024-01-18",
-          orderedBy: "王医生",
-          details: "睡前服用"
-        },
-        {
-          id: "ORD-004",
-          type: "procedure",
-          name: "康复训练",
-          status: "active",
-          orderedDate: "2024-01-19",
-          orderedBy: "王医生",
-          details: "每日两次，每次30分钟"
-        }
-      ],
-      progressNotes: [
-        {
-          id: "NOTE-003",
-          date: "2024-01-20",
-          time: "11:00",
-          author: "王医生",
-          content: "患者意识清醒，右侧肢体活动受限，言语含糊，CT显示左侧大脑中动脉区域梗塞",
-          type: "doctor"
-        },
-        {
-          id: "NOTE-004",
-          date: "2024-01-22",
-          time: "09:30",
-          author: "刘治疗师",
-          content: "患者配合康复训练，右侧肢体肌力3级，言语功能有所改善",
-          type: "other"
-        }
-      ],
-      treatmentResponse: "fair",
-      complications: ["轻度吞咽困难"]
-    },
-    {
-      id: "INP-003",
-      patientId: "P-12352",
-      patientName: "钱七",
-      age: 42,
-      gender: "男",
-      admissionDate: "2024-01-23",
-      admissionTime: "16:20",
-      ward: "呼吸科病区",
-      room: "402",
-      bedNumber: "402-C",
-      diagnosis: ["重症肺炎", "慢性支气管炎"],
-      doctor: "刘医生",
-      department: "呼吸科",
-      status: "critical",
-      lengthOfStay: 1,
-      vitalSigns: {
-        temperature: 38.9,
-        bloodPressure: "110/70",
-        heartRate: 110,
-        respiratoryRate: 26,
-        oxygenSaturation: 92
-      },
-      nursingLevel: "intensive",
       dietType: "流质饮食",
-      activityLevel: "卧床休息",
+      activityLevel: "卧床休息，可下床如厕",
       medications: [
         {
           name: "头孢曲松",
           dosage: "2g",
           frequency: "每12小时一次",
           route: "静脉滴注",
-          startDate: "2024-01-23",
+          startDate: "2025-05-19",
           status: "active"
         },
         {
-          name: "沙丁胺醇",
-          dosage: "5mg",
-          frequency: "每6小时一次",
-          route: "雾化吸入",
-          startDate: "2024-01-23",
+          name: "布洛芬",
+          dosage: "400mg",
+          frequency: "需要时",
+          route: "口服",
+          startDate: "2025-05-19",
           status: "active"
         }
       ],
-      allergies: [],
-      lastRound: {
-        date: "2024-01-24",
-        time: "07:30",
-        doctor: "刘医生",
-        notes: "患者发热持续，呼吸困难，氧饱和度下降，考虑加用无创通气"
-      },
       careTeam: [
         {
-          id: "D-003",
-          name: "刘医生",
+          id: "D-002",
+          name: "张医生",
           role: "主治医师",
-          department: "呼吸科"
+          department: "外科"
         },
         {
-          id: "N-003",
-          name: "赵护士",
+          id: "N-002",
+          name: "刘护士",
           role: "责任护士",
-          department: "呼吸科"
+          department: "外科"
         }
       ],
       orders: [
         {
-          id: "ORD-005",
+          id: "O-003",
           type: "medication",
           name: "头孢曲松 2g 静脉滴注 每12小时一次",
           status: "active",
-          orderedDate: "2024-01-23",
-          orderedBy: "刘医生",
-          details: "输注时间不少于30分钟"
+          orderedDate: "2025-05-19",
+          orderedBy: "张医生",
+          details: "术后抗感染"
         },
         {
-          id: "ORD-006",
-          type: "lab",
-          name: "动脉血气分析",
+          id: "O-004",
+          type: "nursing",
+          name: "伤口护理",
           status: "active",
-          orderedDate: "2024-01-24",
-          orderedBy: "刘医生",
-          details: "紧急"
+          orderedDate: "2025-05-19",
+          orderedBy: "张医生",
+          details: "每日更换敷料一次"
         }
       ],
       progressNotes: [
         {
-          id: "NOTE-005",
-          date: "2024-01-23",
-          time: "18:00",
-          author: "刘医生",
-          content: "患者高热，呼吸急促，肺部啰音明显，胸片显示双肺浸润，开始抗生素治疗",
+          id: "PN-002",
+          date: "2025-05-20",
+          time: "09:00",
+          author: "张医生",
+          content: "患者术后第一天，伤口愈合良好，无渗出，无感染征象。",
           type: "doctor"
         },
         {
-          id: "NOTE-006",
-          date: "2024-01-24",
-          time: "06:00",
-          author: "赵护士",
-          content: "患者夜间发热39.2°C，给予物理降温及退热药物，氧饱和度一度下降至90%，已增加氧流量",
+          id: "PN-003",
+          date: "2025-05-20",
+          time: "14:00",
+          author: "刘护士",
+          content: "已更换敷料，伤口干燥清洁。患者生命体征平稳。",
           type: "nurse"
         }
       ],
-      treatmentResponse: "poor",
-      complications: ["呼吸衰竭"]
+      treatmentResponse: "good",
+      complications: []
     }
   ];
 
-  // 示例数据 - 可用床位
-  const availableBeds = [
+  // 示例数据 - 住院申请
+  const admissionRequests: AdmissionRequest[] = [
     {
-      id: "BED-001",
-      number: "301-A",
-      ward: "心内科病区",
-      type: "普通床位"
+      id: "ADM-001",
+      patientName: "王五",
+      patientId: "P-12347",
+      age: 58,
+      gender: "男",
+      department: "心内科",
+      doctor: "赵医生",
+      diagnosis: "不稳定型心绞痛",
+      reason: "患者近期心绞痛发作频繁，需住院进一步检查和治疗",
+      requestDate: "2025-05-22",
+      urgency: "urgent",
+      status: "pending"
     },
     {
-      id: "BED-002",
-      number: "302-B",
-      ward: "神经内科病区",
-      type: "普通床位"
+      id: "ADM-002",
+      patientName: "赵六",
+      patientId: "P-12348",
+      age: 42,
+      gender: "女",
+      department: "神经内科",
+      doctor: "钱医生",
+      diagnosis: "脑梗死",
+      reason: "患者出现右侧肢体无力，CT显示左侧大脑中动脉区域梗死",
+      requestDate: "2025-05-22",
+      urgency: "normal",
+      status: "pending"
     }
   ];
 
-  const getStatusColor = (status: AdmissionStatus | InpatientStatus, urgency?: 'normal' | 'urgent') => {
-    if (status === 'pending') {
-      return urgency === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800';
+  // 可用床位
+  const availableBeds = [
+    { id: 'B003', number: '302-A', ward: '内科病区A', type: '普通床位' },
+    { id: 'B004', number: '302-B', ward: '内科病区A', type: '普通床位' },
+    { id: 'B005', number: '205-C', ward: '外科病区B', type: '普通床位' }
+  ];
+
+  const getStatusColor = (status: InpatientStatus) => {
+    switch (status) {
+      case 'admitted': return 'bg-blue-100 text-blue-800';
+      case 'critical': return 'bg-red-100 text-red-800';
+      case 'stable': return 'bg-green-100 text-green-800';
+      case 'improving': return 'bg-teal-100 text-teal-800';
+      case 'discharged': return 'bg-gray-100 text-gray-800';
+      case 'transferred': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    if (status === 'approved') {
-      return 'bg-green-100 text-green-800';
-    }
-    if (status === 'rejected') {
-      return 'bg-gray-100 text-gray-800';
-    }
-    if (status === 'admitted') {
-      return 'bg-blue-100 text-blue-800';
-    }
-    if (status === 'critical') {
-      return 'bg-red-100 text-red-800';
-    }
-    if (status === 'stable') {
-      return 'bg-green-100 text-green-800';
-    }
-    if (status === 'improving') {
-      return 'bg-teal-100 text-teal-800';
-    }
-    if (status === 'discharged') {
-      return 'bg-gray-100 text-gray-800';
-    }
-    if (status === 'transferred') {
-      return 'bg-purple-100 text-purple-800';
-    }
-    return 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusLabel = (status: AdmissionStatus | InpatientStatus) => {
+  const getStatusLabel = (status: InpatientStatus) => {
     const labels = {
-      pending: '待审核',
-      approved: '已批准',
-      rejected: '已拒绝',
       admitted: '已入院',
       critical: '危重',
       stable: '稳定',
@@ -568,806 +371,135 @@ const Inpatients: React.FC = () => {
     return labels[status] || '未知';
   };
 
-  const handleApproveRequest = (bedNumber: string) => {
-    if (selectedRequest) {
-      console.log('批准住院申请:', selectedRequest.id, '分配床位:', bedNumber);
-      setSelectedRequest(null);
+  const getAdmissionStatusColor = (status: AdmissionStatus) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const handleRejectRequest = (reason: string) => {
-    if (selectedRequest) {
-      console.log('拒绝住院申请:', selectedRequest.id, '原因:', reason);
-      setSelectedRequest(null);
-    }
+  const getAdmissionStatusLabel = (status: AdmissionStatus) => {
+    const labels = {
+      pending: '待审核',
+      approved: '已批准',
+      rejected: '已拒绝'
+    };
+    return labels[status] || '未知';
   };
+
+  const getUrgencyColor = (urgency: 'normal' | 'urgent') => {
+    return urgency === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800';
+  };
+
+  const filteredInpatients = inpatients.filter(inpatient => {
+    const matchesSearch = inpatient.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         inpatient.patientId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         inpatient.doctor.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = selectedStatus === 'all' || inpatient.status === selectedStatus;
+    const matchesDepartment = !selectedDepartment || inpatient.department === selectedDepartment;
+    return matchesSearch && matchesStatus && matchesDepartment;
+  });
+
+  const filteredAdmissionRequests = admissionRequests.filter(request => {
+    const matchesSearch = request.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         request.patientId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         request.doctor.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDepartment = !selectedDepartment || request.department === selectedDepartment;
+    return matchesSearch && matchesDepartment;
+  });
 
   const handleAddInpatient = (data: any) => {
     console.log('添加住院患者:', data);
     setShowAddModal(false);
   };
 
-  const handleDischargeInpatient = (data: any) => {
+  const handleDischarge = (data: any) => {
     console.log('办理出院:', data);
     setShowDischargeModal(false);
-  };
-
-  const handleWardRound = (data: any) => {
-    console.log('查房记录:', data);
-    setShowWardRoundModal(false);
+    setSelectedInpatient(null);
   };
 
   const handleCareUpdate = (data: any) => {
     console.log('更新护理计划:', data);
     setShowCareModal(false);
+    setSelectedInpatient(null);
   };
 
-  const toggleExpandPatient = (id: string) => {
-    if (expandedPatient === id) {
-      setExpandedPatient(null);
-    } else {
-      setExpandedPatient(id);
-    }
+  const handleRoundSubmit = (data: any) => {
+    console.log('提交查房记录:', data);
+    setShowRoundModal(false);
+    setSelectedInpatient(null);
   };
 
-  const filteredRequests = admissionRequests.filter(request => {
-    const matchesSearch = 
-      request.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.patientId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.doctor.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !selectedStatus || request.status === selectedStatus;
-    const matchesDepartment = !selectedDepartment || request.department === selectedDepartment;
-    return matchesSearch && matchesStatus && matchesDepartment;
-  });
+  const handleDeleteInpatient = () => {
+    console.log('删除住院记录:', selectedInpatient?.id);
+    setShowDeleteModal(false);
+    setSelectedInpatient(null);
+  };
 
-  const filteredInpatients = inpatients.filter(inpatient => {
-    const matchesSearch = 
-      inpatient.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inpatient.patientId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inpatient.doctor.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !selectedStatus || inpatient.status === selectedStatus;
-    const matchesDepartment = !selectedDepartment || inpatient.department === selectedDepartment;
-    const matchesWard = !selectedWard || inpatient.ward === selectedWard;
-    return matchesSearch && matchesStatus && matchesDepartment && matchesWard;
-  });
+  const handleApproveAdmission = (bedNumber: string) => {
+    console.log('批准入院申请:', selectedAdmissionRequest?.id, '分配床位:', bedNumber);
+    setShowAdmissionRequestModal(false);
+    setSelectedAdmissionRequest(null);
+  };
 
-  const renderRequestsView = () => (
-    <div className="space-y-4">
-      {filteredRequests.map((request) => (
-        <div 
-          key={request.id}
-          className="bg-white rounded-lg shadow-sm overflow-hidden"
-        >
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="flex items-center">
-                  <h3 className="font-semibold text-gray-800">{request.patientName}</h3>
-                  <span className="ml-2 text-sm text-gray-500">({request.patientId})</span>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  {request.age}岁 • {request.gender}
-                </p>
-              </div>
-              <div className="flex space-x-2">
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  request.urgency === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {request.urgency === 'urgent' ? '紧急' : '普通'}
-                </span>
-                <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(request.status, request.urgency)}`}>
-                  {getStatusLabel(request.status)}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <p className="text-sm text-gray-500">申请科室</p>
-                <p className="font-medium">{request.department}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">申请医生</p>
-                <p className="font-medium">{request.doctor}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">申请时间</p>
-                <p className="font-medium">{request.requestDate} {request.requestTime}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">预计住院时间</p>
-                <p className="font-medium">{request.expectedStayDuration}天</p>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h4 className="font-medium text-gray-700 mb-2">诊断信息</h4>
-              <p className="text-sm text-gray-600">{request.diagnosis}</p>
-              <p className="text-sm text-gray-600 mt-2">住院原因：{request.reason}</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <p className="text-sm text-gray-500">医保类型</p>
-                <p className="font-medium">{request.insuranceType}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">联系人信息</p>
-                <p className="font-medium">
-                  {request.contactPerson.name} ({request.contactPerson.relationship})
-                  <span className="text-sm text-gray-500 ml-2">{request.contactPerson.phone}</span>
-                </p>
-              </div>
-            </div>
-
-            {request.status === 'pending' && (
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setSelectedRequest(request)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
-                >
-                  审核
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const renderInpatientsView = () => (
-    <div className="space-y-4">
-      {filteredInpatients.map((inpatient) => (
-        <div 
-          key={inpatient.id}
-          className="bg-white rounded-lg shadow-sm overflow-hidden"
-        >
-          <div 
-            className="p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50"
-            onClick={() => toggleExpandPatient(inpatient.id)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                  <Users size={20} className="text-primary-600" />
-                </div>
-                <div>
-                  <div className="flex items-center">
-                    <h3 className="font-semibold text-gray-800">{inpatient.patientName}</h3>
-                    <span className="ml-2 text-sm text-gray-500">({inpatient.patientId})</span>
-                    <span className={`ml-3 px-2 py-1 text-xs rounded-full ${getStatusColor(inpatient.status)}`}>
-                      {getStatusLabel(inpatient.status)}
-                    </span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <span>{inpatient.age}岁 • {inpatient.gender}</span>
-                    <span className="mx-2">|</span>
-                    <span>{inpatient.ward} {inpatient.bedNumber}床</span>
-                    <span className="mx-2">|</span>
-                    <span>住院{inpatient.lengthOfStay}天</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="mr-4">
-                  {inpatient.lastRound && (
-                    <div className="text-xs text-gray-500">
-                      最近查房: {inpatient.lastRound.date}
-                    </div>
-                  )}
-                </div>
-                {expandedPatient === inpatient.id ? (
-                  <ChevronDown size={20} className="text-gray-400" />
-                ) : (
-                  <ChevronRight size={20} className="text-gray-400" />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {expandedPatient === inpatient.id && (
-            <div className="p-4 bg-gray-50">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* 左侧：基本信息和生命体征 */}
-                <div className="space-y-4">
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-3">基本信息</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">入院日期</span>
-                        <span className="text-sm font-medium">{inpatient.admissionDate}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">主治医生</span>
-                        <span className="text-sm font-medium">{inpatient.doctor}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">科室</span>
-                        <span className="text-sm font-medium">{inpatient.department}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">护理级别</span>
-                        <span className="text-sm font-medium">
-                          {inpatient.nursingLevel === 'standard' ? '普通护理' : 
-                           inpatient.nursingLevel === 'intermediate' ? '中级护理' : '重症护理'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">饮食</span>
-                        <span className="text-sm font-medium">{inpatient.dietType}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">活动</span>
-                        <span className="text-sm font-medium">{inpatient.activityLevel}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-3">生命体征</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">体温</span>
-                        <span className={`text-sm font-medium ${
-                          inpatient.vitalSigns.temperature > 37.5 ? 'text-red-600' : 'text-gray-800'
-                        }`}>
-                          {inpatient.vitalSigns.temperature}°C
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">血压</span>
-                        <span className="text-sm font-medium">{inpatient.vitalSigns.bloodPressure} mmHg</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">心率</span>
-                        <span className={`text-sm font-medium ${
-                          inpatient.vitalSigns.heartRate > 100 ? 'text-red-600' : 'text-gray-800'
-                        }`}>
-                          {inpatient.vitalSigns.heartRate} bpm
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">呼吸</span>
-                        <span className={`text-sm font-medium ${
-                          inpatient.vitalSigns.respiratoryRate > 24 ? 'text-red-600' : 'text-gray-800'
-                        }`}>
-                          {inpatient.vitalSigns.respiratoryRate} /min
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">血氧</span>
-                        <span className={`text-sm font-medium ${
-                          inpatient.vitalSigns.oxygenSaturation < 95 ? 'text-red-600' : 'text-gray-800'
-                        }`}>
-                          {inpatient.vitalSigns.oxygenSaturation}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 中间：诊断和医嘱 */}
-                <div className="space-y-4">
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-3">诊断</h4>
-                    <div className="space-y-2">
-                      {inpatient.diagnosis.map((diag, index) => (
-                        <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                          <span className="text-sm text-blue-800">{diag}</span>
-                        </div>
-                      ))}
-                      {inpatient.complications.length > 0 && (
-                        <div className="mt-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-2">并发症</h5>
-                          {inpatient.complications.map((comp, index) => (
-                            <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-2 mb-2">
-                              <span className="text-sm text-red-800">{comp}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-700">医嘱</h4>
-                      <span className="text-xs text-gray-500">
-                        {inpatient.orders.filter(o => o.status === 'active').length} 条活动医嘱
-                      </span>
-                    </div>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {inpatient.orders
-                        .filter(order => order.status === 'active')
-                        .map((order) => (
-                          <div key={order.id} className="border-l-2 border-primary-500 pl-2 py-1">
-                            <div className="text-sm font-medium text-gray-800">{order.name}</div>
-                            <div className="text-xs text-gray-500">
-                              {order.orderedDate} • {order.orderedBy}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 右侧：进展记录和操作 */}
-                <div className="space-y-4">
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-3">进展记录</h4>
-                    <div className="space-y-3 max-h-40 overflow-y-auto">
-                      {inpatient.progressNotes
-                        .sort((a, b) => new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime())
-                        .slice(0, 3)
-                        .map((note) => (
-                          <div key={note.id} className="border-l-2 border-gray-300 pl-2 py-1">
-                            <div className="text-xs text-gray-500">
-                              {note.date} {note.time} • {note.author}
-                            </div>
-                            <div className="text-sm text-gray-800 mt-1">{note.content}</div>
-                          </div>
-                        ))}
-                    </div>
-                    {inpatient.progressNotes.length > 3 && (
-                      <div className="mt-2 text-center">
-                        <button className="text-xs text-primary-600 hover:text-primary-700">
-                          查看全部 {inpatient.progressNotes.length} 条记录
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-3">操作</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedInpatient(inpatient);
-                          setShowWardRoundModal(true);
-                        }}
-                        className="flex items-center justify-center px-3 py-2 text-sm text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100"
-                      >
-                        <Stethoscope size={16} className="mr-1" />
-                        查房记录
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInpatient(inpatient);
-                          setShowCareModal(true);
-                        }}
-                        className="flex items-center justify-center px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                      >
-                        <Heart size={16} className="mr-1" />
-                        护理计划
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInpatient(inpatient);
-                          setShowDetailsModal(true);
-                        }}
-                        className="flex items-center justify-center px-3 py-2 text-sm text-green-600 bg-green-50 rounded-lg hover:bg-green-100"
-                      >
-                        <FileText size={16} className="mr-1" />
-                        详细信息
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedInpatient(inpatient);
-                          setShowDischargeModal(true);
-                        }}
-                        className="flex items-center justify-center px-3 py-2 text-sm text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100"
-                      >
-                        <ArrowRight size={16} className="mr-1" />
-                        办理出院
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-
-  const renderWardRoundsView = () => (
-    <div className="space-y-4">
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">今日查房计划</h3>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  病区
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  医生
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  查房时间
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  患者数
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  状态
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">心内科病区</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">张医生</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">09:00 - 10:30</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">12</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                    已完成
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-primary-600 hover:text-primary-900">查看记录</button>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">神经内科病区</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">王医生</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">10:00 - 11:30</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">8</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    进行中
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-primary-600 hover:text-primary-900">查看记录</button>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">呼吸科病区</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">刘医生</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">14:00 - 15:30</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">10</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                    未开始
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-primary-600 hover:text-primary-900">安排查房</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">需要关注的患者</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {inpatients
-            .filter(patient => patient.status === 'critical' || patient.complications.length > 0)
-            .map(patient => (
-              <div key={patient.id} className="border border-red-200 bg-red-50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-medium text-gray-800">{patient.patientName}</div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(patient.status)}`}>
-                    {getStatusLabel(patient.status)}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-600 mb-2">
-                  {patient.ward} {patient.bedNumber}床 • {patient.doctor}
-                </div>
-                <div className="text-sm text-red-600">
-                  {patient.complications.length > 0 ? (
-                    <>
-                      <span className="font-medium">并发症：</span>
-                      {patient.complications.join('、')}
-                    </>
-                  ) : (
-                    <span className="font-medium">需要密切监测</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedInpatient(patient);
-                    setShowWardRoundModal(true);
-                  }}
-                  className="mt-2 w-full px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700"
-                >
-                  立即查房
-                </button>
-              </div>
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderCareView = () => (
-    <div className="space-y-4">
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">护理任务</h3>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  患者
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  床位
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  任务
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  计划时间
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  状态
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">王五</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">心内科病区 301-A</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">测量生命体征</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">08:00</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                    已完成
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-primary-600 hover:text-primary-900">查看详情</button>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">赵六</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">神经内科病区 205-B</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">静脉给药</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">10:00</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    待执行
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-primary-600 hover:text-primary-900">执行</button>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">钱七</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">呼吸科病区 402-C</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">吸氧治疗</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">持续</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                    进行中
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-primary-600 hover:text-primary-900">调整</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">护理评估</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {inpatients.map(patient => (
-            <div key={patient.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-medium text-gray-800">{patient.patientName}</div>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  patient.nursingLevel === 'intensive' ? 'bg-red-100 text-red-800' :
-                  patient.nursingLevel === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
-                  {patient.nursingLevel === 'intensive' ? '重症护理' :
-                   patient.nursingLevel === 'intermediate' ? '中级护理' : '普通护理'}
-                </span>
-              </div>
-              <div className="text-sm text-gray-600 mb-2">
-                {patient.ward} {patient.bedNumber}床 • 住院{patient.lengthOfStay}天
-              </div>
-              <div className="text-sm text-gray-600 mb-3">
-                <div><span className="font-medium">饮食：</span>{patient.dietType}</div>
-                <div><span className="font-medium">活动：</span>{patient.activityLevel}</div>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedInpatient(patient);
-                  setShowCareModal(true);
-                }}
-                className="w-full px-3 py-1 text-sm text-primary-600 border border-primary-600 rounded hover:bg-primary-50"
-              >
-                更新护理计划
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  const handleRejectAdmission = (reason: string) => {
+    console.log('拒绝入院申请:', selectedAdmissionRequest?.id, '原因:', reason);
+    setShowAdmissionRequestModal(false);
+    setSelectedAdmissionRequest(null);
+  };
 
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">住院管理</h1>
-          <p className="text-gray-600">管理住院患者和病房分配</p>
+          <h1 className="text-2xl font-bold text-gray-800">{t('inpatients.title')}</h1>
+          <p className="text-gray-600">{t('inpatients.subtitle')}</p>
         </div>
         
-        <div className="mt-4 md:mt-0 flex space-x-2">
-          <button
+        <div className="mt-4 md:mt-0">
+          <button 
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 flex items-center"
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center text-sm font-medium hover:bg-primary-700 transition-colors"
           >
             <Plus size={16} className="mr-1" />
-            新增住院
+            {t('inpatients.new')}
           </button>
         </div>
       </div>
 
-      {/* 视图切换 */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="flex space-x-4">
+      {/* 标签页切换 */}
+      <div className="bg-white rounded-lg shadow-sm mb-6">
+        <div className="flex border-b border-gray-200">
           <button
-            onClick={() => setCurrentView('list')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg ${
-              currentView === 'list' 
-                ? 'bg-primary-100 text-primary-700' 
-                : 'text-gray-600 hover:bg-gray-100'
+            onClick={() => setActiveTab('inpatients')}
+            className={`px-4 py-3 text-sm font-medium ${
+              activeTab === 'inpatients'
+                ? 'border-b-2 border-primary-500 text-primary-600'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            <Users size={16} className="inline mr-2" />
-            住院患者
+            <BedDouble size={16} className="inline mr-2" />
+            住院患者管理
           </button>
           <button
-            onClick={() => setCurrentView('requests')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg ${
-              currentView === 'requests' 
-                ? 'bg-primary-100 text-primary-700' 
-                : 'text-gray-600 hover:bg-gray-100'
+            onClick={() => setActiveTab('admissionRequests')}
+            className={`px-4 py-3 text-sm font-medium ${
+              activeTab === 'admissionRequests'
+                ? 'border-b-2 border-primary-500 text-primary-600'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            <Clipboard size={16} className="inline mr-2" />
-            住院申请
-            {filteredRequests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded-full">
-                {filteredRequests.filter(r => r.status === 'pending').length}
+            <FileText size={16} className="inline mr-2" />
+            住院申请审核
+            {admissionRequests.filter(req => req.status === 'pending').length > 0 && (
+              <span className="ml-2 px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
+                {admissionRequests.filter(req => req.status === 'pending').length}
               </span>
             )}
           </button>
-          <button
-            onClick={() => setCurrentView('rounds')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg ${
-              currentView === 'rounds' 
-                ? 'bg-primary-100 text-primary-700' 
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <Stethoscope size={16} className="inline mr-2" />
-            查房管理
-          </button>
-          <button
-            onClick={() => setCurrentView('care')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg ${
-              currentView === 'care' 
-                ? 'bg-primary-100 text-primary-700' 
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <Heart size={16} className="inline mr-2" />
-            护理管理
-          </button>
-        </div>
-      </div>
-
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">住院患者</h3>
-            <Users className="h-5 w-5 text-blue-600" />
-          </div>
-          <p className="text-2xl font-semibold text-blue-600">{inpatients.length}</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">危重患者</h3>
-            <AlertTriangle className="h-5 w-5 text-red-600" />
-          </div>
-          <p className="text-2xl font-semibold text-red-600">
-            {inpatients.filter(p => p.status === 'critical').length}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">待审核申请</h3>
-            <Clock className="h-5 w-5 text-yellow-600" />
-          </div>
-          <p className="text-2xl font-semibold text-yellow-600">
-            {admissionRequests.filter(r => r.status === 'pending').length}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">今日查房</h3>
-            <Stethoscope className="h-5 w-5 text-green-600" />
-          </div>
-          <p className="text-2xl font-semibold text-green-600">3</p>
         </div>
       </div>
 
@@ -1375,179 +507,391 @@ const Inpatients: React.FC = () => {
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
         <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={18} className="text-gray-400" />
+            </div>
             <input
               type="text"
-              placeholder="搜索患者姓名、ID或医生..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500"
+              placeholder={activeTab === 'inpatients' ? t('inpatients.search') : "搜索住院申请..."}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-
+          
+          {activeTab === 'inpatients' && (
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value as InpatientStatus | 'all')}
+              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            >
+              <option value="all">所有状态</option>
+              <option value="admitted">已入院</option>
+              <option value="critical">危重</option>
+              <option value="stable">稳定</option>
+              <option value="improving">好转中</option>
+              <option value="discharged">已出院</option>
+              <option value="transferred">已转科</option>
+            </select>
+          )}
+          
           <select
             value={selectedDepartment}
             onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
           >
             <option value="">所有科室</option>
-            <option value="心内科">心内科</option>
-            <option value="神经内科">神经内科</option>
-            <option value="呼吸科">呼吸科</option>
-            <option value="普通外科">普通外科</option>
-            <option value="骨科">骨科</option>
+            <option value="内科">内科</option>
+            <option value="外科">外科</option>
+            <option value="儿科">儿科</option>
+            <option value="妇科">妇科</option>
           </select>
-
-          {currentView === 'list' && (
-            <select
-              value={selectedWard}
-              onChange={(e) => setSelectedWard(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            >
-              <option value="">所有病区</option>
-              <option value="心内科病区">心内科病区</option>
-              <option value="神经内科病区">神经内科病区</option>
-              <option value="呼吸科病区">呼吸科病区</option>
-            </select>
-          )}
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as AdmissionStatus | InpatientStatus)}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          >
-            <option value="">所有状态</option>
-            {currentView === 'requests' ? (
-              <>
-                <option value="pending">待审核</option>
-                <option value="approved">已批准</option>
-                <option value="rejected">已拒绝</option>
-              </>
-            ) : (
-              <>
-                <option value="admitted">已入院</option>
-                <option value="critical">危重</option>
-                <option value="stable">稳定</option>
-                <option value="improving">好转中</option>
-                <option value="discharged">已出院</option>
-                <option value="transferred">已转科</option>
-              </>
-            )}
-          </select>
+          
+          <button className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-primary-500">
+            <Filter size={16} className="mr-2" />
+            {t('common.filter')}
+          </button>
         </div>
       </div>
 
-      {/* 内容区域 */}
-      {currentView === 'list' && renderInpatientsView()}
-      {currentView === 'requests' && renderRequestsView()}
-      {currentView === 'rounds' && renderWardRoundsView()}
-      {currentView === 'care' && renderCareView()}
+      {/* 住院患者列表 */}
+      {activeTab === 'inpatients' && (
+        <>
+          {filteredInpatients.length > 0 ? (
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        患者信息
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        住院信息
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        诊断
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        状态
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredInpatients.map((inpatient) => (
+                      <tr key={inpatient.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                              <User size={20} className="text-primary-600" />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{inpatient.patientName}</div>
+                              <div className="text-sm text-gray-500">
+                                {inpatient.age}岁 • {inpatient.gender} • ID: {inpatient.patientId}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {inpatient.ward} {inpatient.bedNumber}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {inpatient.department} • {inpatient.doctor}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            入院: {inpatient.admissionDate} • 住院: {inpatient.lengthOfStay}天
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {inpatient.diagnosis.join('、')}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(inpatient.status)}`}>
+                            {getStatusLabel(inpatient.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button 
+                              onClick={() => {
+                                setSelectedInpatient(inpatient);
+                                setShowDetailsModal(true);
+                              }}
+                              className="text-primary-600 hover:text-primary-900"
+                            >
+                              查看
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedInpatient(inpatient);
+                                setShowRoundModal(true);
+                              }}
+                              className="text-primary-600 hover:text-primary-900"
+                            >
+                              查房
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedInpatient(inpatient);
+                                setShowCareModal(true);
+                              }}
+                              className="text-primary-600 hover:text-primary-900"
+                            >
+                              护理
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedInpatient(inpatient);
+                                setShowDischargeModal(true);
+                              }}
+                              className="text-primary-600 hover:text-primary-900"
+                            >
+                              出院
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <BedDouble size={32} className="text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">{t('inpatients.noResults')}</h3>
+              <p className="text-gray-500 mb-4">
+                {t('inpatients.noResultsDesc')}
+              </p>
+              <button 
+                className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedStatus('all');
+                  setSelectedDepartment('');
+                }}
+              >
+                {t('common.clear')}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 住院申请列表 */}
+      {activeTab === 'admissionRequests' && (
+        <>
+          {filteredAdmissionRequests.length > 0 ? (
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        患者信息
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        申请信息
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        诊断
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        状态
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredAdmissionRequests.map((request) => (
+                      <tr key={request.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                              <User size={20} className="text-primary-600" />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{request.patientName}</div>
+                              <div className="text-sm text-gray-500">
+                                {request.age}岁 • {request.gender} • ID: {request.patientId}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {request.department} • {request.doctor}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            申请日期: {request.requestDate}
+                          </div>
+                          <div>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              getUrgencyColor(request.urgency)
+                            }`}>
+                              {request.urgency === 'urgent' ? '紧急' : '常规'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {request.diagnosis}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1 max-w-xs truncate">
+                            原因: {request.reason}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getAdmissionStatusColor(request.status)}`}>
+                            {getAdmissionStatusLabel(request.status)}
+                          </span>
+                          {request.status === 'rejected' && request.rejectionReason && (
+                            <div className="text-xs text-red-500 mt-1">
+                              {request.rejectionReason}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {request.status === 'pending' && (
+                            <div className="flex space-x-2">
+                              <button 
+                                onClick={() => {
+                                  setSelectedAdmissionRequest(request);
+                                  setShowAdmissionRequestModal(true);
+                                }}
+                                className="text-primary-600 hover:text-primary-900"
+                              >
+                                审核
+                              </button>
+                            </div>
+                          )}
+                          {request.status !== 'pending' && (
+                            <div className="text-gray-400">
+                              已处理
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <FileText size={32} className="text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">暂无住院申请</h3>
+              <p className="text-gray-500 mb-4">
+                当前没有待处理的住院申请
+              </p>
+            </div>
+          )}
+        </>
+      )}
 
       {/* 模态框 */}
-      <AdmissionRequestModal
-        isOpen={!!selectedRequest}
-        onClose={() => setSelectedRequest(null)}
-        onApprove={handleApproveRequest}
-        onReject={handleRejectRequest}
-        request={selectedRequest!}
-        availableBeds={availableBeds}
-      />
-
-      <DeleteInpatientModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={() => {
-          console.log('删除申请');
-          setShowDeleteModal(false);
-        }}
-        patientName={selectedInpatient?.patientName || ''}
-      />
-
       <AddInpatientModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddInpatient}
-        mode="add"
       />
 
       {selectedInpatient && (
         <>
-          <WardRoundModal
-            isOpen={showWardRoundModal}
-            onClose={() => setShowWardRoundModal(false)}
-            onSubmit={handleWardRound}
-            patient={{
-              id: selectedInpatient.patientId,
-              name: selectedInpatient.patientName,
-              age: selectedInpatient.age,
-              gender: selectedInpatient.gender,
-              diagnosis: selectedInpatient.diagnosis.join('、'),
-              admissionDate: selectedInpatient.admissionDate,
-              ward: selectedInpatient.ward,
-              bedNumber: selectedInpatient.bedNumber
-            }}
-            previousRounds={[
-              {
-                id: "WR-001",
-                date: "2024-01-23",
-                time: "09:00",
-                doctor: selectedInpatient.doctor,
-                vitalSigns: {
-                  temperature: selectedInpatient.vitalSigns.temperature,
-                  bloodPressure: selectedInpatient.vitalSigns.bloodPressure,
-                  heartRate: selectedInpatient.vitalSigns.heartRate,
-                  respiratoryRate: selectedInpatient.vitalSigns.respiratoryRate
-                },
-                condition: "患者一般状况良好，无明显不适",
-                progress: "病情稳定，治疗反应良好",
-                treatment: "继续当前治疗方案",
-                urgencyLevel: "normal"
-              }
-            ]}
-          />
-
           <InpatientDetailsModal
             isOpen={showDetailsModal}
-            onClose={() => setShowDetailsModal(false)}
+            onClose={() => {
+              setShowDetailsModal(false);
+              setSelectedInpatient(null);
+            }}
+            patient={selectedInpatient}
+          />
+
+          <DischargeModal
+            isOpen={showDischargeModal}
+            onClose={() => {
+              setShowDischargeModal(false);
+              setSelectedInpatient(null);
+            }}
+            onSubmit={handleDischarge}
             patient={selectedInpatient}
           />
 
           <InpatientCareModal
             isOpen={showCareModal}
-            onClose={() => setShowCareModal(false)}
-            onSubmit={handleCareUpdate}
-            patient={{
-              id: selectedInpatient.patientId,
-              name: selectedInpatient.patientName,
-              age: selectedInpatient.age,
-              gender: selectedInpatient.gender,
-              ward: selectedInpatient.ward,
-              bedNumber: selectedInpatient.bedNumber,
-              nursingLevel: selectedInpatient.nursingLevel,
-              dietType: selectedInpatient.dietType,
-              activityLevel: selectedInpatient.activityLevel,
-              diagnosis: selectedInpatient.diagnosis.join('、'),
-              allergies: selectedInpatient.allergies
+            onClose={() => {
+              setShowCareModal(false);
+              setSelectedInpatient(null);
             }}
+            onSubmit={handleCareUpdate}
+            patient={selectedInpatient}
           />
 
-          <DischargeModal
-            isOpen={showDischargeModal}
-            onClose={() => setShowDischargeModal(false)}
-            onSubmit={handleDischargeInpatient}
-            patient={{
-              id: selectedInpatient.patientId,
-              name: selectedInpatient.patientName,
-              age: selectedInpatient.age,
-              gender: selectedInpatient.gender,
-              admissionDate: selectedInpatient.admissionDate,
-              lengthOfStay: selectedInpatient.lengthOfStay,
-              diagnosis: selectedInpatient.diagnosis,
-              doctor: selectedInpatient.doctor,
-              department: selectedInpatient.department
+          <WardRoundModal
+            isOpen={showRoundModal}
+            onClose={() => {
+              setShowRoundModal(false);
+              setSelectedInpatient(null);
             }}
+            onSubmit={handleRoundSubmit}
+            patient={selectedInpatient}
+            previousRounds={[
+              {
+                id: "WR-001",
+                date: "2025-05-21",
+                time: "09:00",
+                doctor: "李医生",
+                vitalSigns: {
+                  temperature: 36.7,
+                  bloodPressure: "125/80",
+                  heartRate: 72,
+                  respiratoryRate: 16
+                },
+                condition: "患者一般状况良好，无明显不适",
+                progress: "血压控制良好，继续观察",
+                treatment: "继续原有治疗方案",
+                urgencyLevel: "normal"
+              }
+            ]}
+          />
+
+          <DeleteInpatientModal
+            isOpen={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setSelectedInpatient(null);
+            }}
+            onConfirm={handleDeleteInpatient}
+            patientName={selectedInpatient.patientName}
           />
         </>
+      )}
+
+      {selectedAdmissionRequest && (
+        <AdmissionRequestModal
+          isOpen={showAdmissionRequestModal}
+          onClose={() => {
+            setShowAdmissionRequestModal(false);
+            setSelectedAdmissionRequest(null);
+          }}
+          onApprove={handleApproveAdmission}
+          onReject={handleRejectAdmission}
+          request={selectedAdmissionRequest}
+          availableBeds={availableBeds}
+        />
       )}
     </div>
   );

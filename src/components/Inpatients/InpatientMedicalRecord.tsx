@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Save, FileText, User, Calendar, Clock, Stethoscope, Heart, Activity, Brain, Pill, FlaskConical, Clipboard, CheckCircle, AlertTriangle, Download, Print, Share2 } from 'lucide-react';
+import { X, Save, FileText, User, Calendar, Clock, Stethoscope, Heart, Activity, Brain, Pill, FlaskConical, Clipboard, CheckCircle, AlertTriangle, Download, Printer as Print, Share2 } from 'lucide-react';
 import RichTextEditor from '../Consultation/RichTextEditor';
 
 type RecordType = 'admission' | 'progress' | 'nursing' | 'operation' | 'discharge';

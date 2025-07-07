@@ -638,6 +638,15 @@ const Inpatients: React.FC = () => {
                             <button 
                               onClick={() => {
                                 setSelectedInpatient(inpatient);
+                                setShowMedicalRecordModal(true);
+                              }}
+                              className="text-primary-600 hover:text-primary-900"
+                            >
+                              病历
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedInpatient(inpatient);
                                 setShowRoundModal(true);
                               }}
                               className="text-primary-600 hover:text-primary-900"
@@ -780,15 +789,6 @@ const Inpatients: React.FC = () => {
                                 className="text-primary-600 hover:text-primary-900"
                               >
                                 审核
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  setSelectedInpatient(inpatient);
-                                  setShowMedicalRecordModal(true);
-                                }}
-                                className="text-primary-600 hover:text-primary-900"
-                              >
-                                病历
                               </button>
                             </div>
                           )}

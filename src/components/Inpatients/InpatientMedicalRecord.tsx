@@ -743,7 +743,7 @@ const InpatientMedicalRecord: React.FC<InpatientMedicalRecordProps> = ({
                 onChange={(e) => handleChange('complications', e.target.value)}
                 rows={2}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="描述手术中出现的并发症，如无则填\"无\"..."
+                placeholder="描述手术中出现的并发症，如无则填'无'..."
               />
             </div>
             

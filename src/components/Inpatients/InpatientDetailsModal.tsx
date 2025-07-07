@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, User, FileText, Pill, Activity, Heart, AlertTriangle, CheckCircle, ArrowRight, Printer, Download, Edit, Clipboard, Stethoscope, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Calendar, Clock, User, FileText, Pill, Activity, Heart, AlertTriangle, CheckCircle, ArrowRight, Printer, Download, Edit, Clipboard, Stethoscope, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
 
 type InpatientStatus = 'admitted' | 'critical' | 'stable' | 'improving' | 'discharged' | 'transferred';
 
@@ -81,12 +81,14 @@ interface Inpatient {
 interface InpatientDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onEditMedicalRecord: () => void;
   patient: Inpatient;
 }
 
 const InpatientDetailsModal: React.FC<InpatientDetailsModalProps> = ({
   isOpen,
   onClose,
+  onEditMedicalRecord,
   patient
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'progress' | 'care'>('overview');
@@ -654,6 +656,13 @@ const InpatientDetailsModal: React.FC<InpatientDetailsModalProps> = ({
             </button>
             <button className="p-2 text-gray-600 hover:text-primary-600 rounded-lg hover:bg-gray-100">
               <Download size={20} />
+            </button>
+            <button
+              onClick={onEditMedicalRecord}
+              className="p-2 text-gray-600 hover:text-primary-600 rounded-lg hover:bg-gray-100"
+              title="编辑病历"
+            >
+              <BookOpen size={20} />
             </button>
             <button
               onClick={onClose}

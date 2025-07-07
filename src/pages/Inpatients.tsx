@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Plus, Filter, Calendar, Clock, User, Building2, BedDouble, FileText, ArrowRight, ArrowRightLeft, DoorOpen, Stethoscope, Heart, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, Plus, Filter, Calendar, Clock, User, Building2, BedDouble, FileText, ArrowRight, ArrowRightLeft, DoorOpen, Stethoscope, Heart, X, CheckCircle, AlertCircle, Edit } from 'lucide-react';
 import AddInpatientModal from '../components/Inpatients/AddInpatientModal';
 import DeleteInpatientModal from '../components/Inpatients/DeleteInpatientModal';
 import InpatientDetailsModal from '../components/Inpatients/InpatientDetailsModal';
@@ -8,6 +8,7 @@ import DischargeModal from '../components/Inpatients/DischargeModal';
 import InpatientCareModal from '../components/Inpatients/InpatientCareModal';
 import WardRoundModal from '../components/Inpatients/WardRoundModal';
 import AdmissionRequestModal from '../components/Inpatients/AdmissionRequestModal';
+import InpatientMedicalRecord from '../components/Inpatients/InpatientMedicalRecord';
 
 type InpatientStatus = 'admitted' | 'critical' | 'stable' | 'improving' | 'discharged' | 'transferred';
 type AdmissionStatus = 'pending' | 'approved' | 'rejected';
@@ -114,6 +115,7 @@ const Inpatients: React.FC = () => {
   const [showRoundModal, setShowRoundModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showMedicalRecordModal, setShowMedicalRecordModal] = useState(false);
   const [showAdmissionRequestModal, setShowAdmissionRequestModal] = useState(false);
   const [selectedInpatient, setSelectedInpatient] = useState<Inpatient | null>(null);
   const [selectedAdmissionRequest, setSelectedAdmissionRequest] = useState<AdmissionRequest | null>(null);
@@ -437,6 +439,11 @@ const Inpatients: React.FC = () => {
     console.log('删除住院记录:', selectedInpatient?.id);
     setShowDeleteModal(false);
     setSelectedInpatient(null);
+  };
+
+  const handleMedicalRecordSave = (data: any) => {
+    console.log('保存病历:', data);
+    setShowMedicalRecordModal(false);
   };
 
   const handleApproveAdmission = (bedNumber: string) => {
@@ -774,6 +781,15 @@ const Inpatients: React.FC = () => {
                               >
                                 审核
                               </button>
+                              <button 
+                                onClick={() => {
+                                  setSelectedInpatient(inpatient);
+                                  setShowMedicalRecordModal(true);
+                                }}
+                                className="text-primary-600 hover:text-primary-900"
+                              >
+                                病历
+                              </button>
                             </div>
                           )}
                           {request.status !== 'pending' && (
@@ -888,9 +904,34 @@ const Inpatients: React.FC = () => {
             setSelectedAdmissionRequest(null);
           }}
           onApprove={handleApproveAdmission}
+          onEditMedicalRecord={() => {
+            setShowDetailsModal(false);
+            setShowMedicalRecordModal(true);
+          }}
           onReject={handleRejectAdmission}
           request={selectedAdmissionRequest}
           availableBeds={availableBeds}
+        />
+      )}
+      
+      {selectedInpatient && (
+        <InpatientMedicalRecord
+          isOpen={showMedicalRecordModal}
+          onClose={() => {
+            setShowMedicalRecordModal(false);
+            setSelectedInpatient(null);
+          }}
+          onSave={handleMedicalRecordSave}
+          patientInfo={{
+            id: selectedInpatient.patientId,
+            name: selectedInpatient.patientName,
+            age: selectedInpatient.age,
+            gender: selectedInpatient.gender,
+            admissionDate: selectedInpatient.admissionDate,
+            diagnosis: selectedInpatient.diagnosis,
+            doctor: selectedInpatient.doctor,
+            department: selectedInpatient.department
+          }}
         />
       )}
     </div>

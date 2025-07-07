@@ -5,6 +5,7 @@ import { X, FileText, BedDouble, Check, X as XIcon } from 'lucide-react';
 type AdmissionRequestModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onEditMedicalRecord: () => void;
   onApprove: (bedNumber: string) => void;
   onReject: (reason: string) => void;
   request: {
@@ -31,6 +32,7 @@ type AdmissionRequestModalProps = {
 const AdmissionRequestModal: React.FC<AdmissionRequestModalProps> = ({
   isOpen,
   onClose,
+  onEditMedicalRecord,
   onApprove,
   onReject,
   request,
@@ -140,6 +142,12 @@ const AdmissionRequestModal: React.FC<AdmissionRequestModalProps> = ({
 
               {/* 操作按钮 */}
               <div className="flex justify-end space-x-3">
+                <button
+                  onClick={onEditMedicalRecord}
+                  className="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50"
+                >
+                  编辑病历
+                </button>
                 <button
                   onClick={() => setShowRejectForm(true)}
                   className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700"
